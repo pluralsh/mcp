@@ -1,0 +1,17 @@
+# Node & TypeScript
+node_modules/
+dist/
+build/
+
+# Local dev/test files to exclude
+ec256-private.key
+ec256-public.pem
+jwks.json
+convert-to-jwks.ts
+sign-token.js
+mcp.code-workspace
+
+# Optional: ignore logs, env files, Mac junk
+*.log
+.env
+.DS_Store

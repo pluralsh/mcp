@@ -1,0 +1,51 @@
+{
+  "name": "mcp",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "weather": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "test": "mocha -r ts-node/register test/**/*.test.ts"
+  },
+  "files": [
+    "build"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pluralsh/mcp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pluralsh/mcp/issues"
+  },
+  "homepage": "https://github.com/pluralsh/mcp#readme",
+  "description": "",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.8.0",
+    "jose": "^6.0.10",
+    "jsonwebtoken": "^9.0.2",
+    "jwk-to-pem": "^2.0.7",
+    "jwks-rsa": "^3.2.0",
+    "jwt-decode": "^4.0.0",
+    "pem-jwk": "^2.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/chai": "^5.2.1",
+    "@types/chai-as-promised": "^8.0.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.13.14",
+    "@types/sinon": "^17.0.4",
+    "chai": "^5.2.0",
+    "chai-as-promised": "^8.0.1",
+    "mocha": "^11.1.0",
+    "sinon": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  }
+}
