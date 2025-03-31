@@ -7,9 +7,9 @@ import sinon from "sinon";
 import jwt from "jsonwebtoken";
 import * as jwksClient from "jwks-rsa";
 import http from "http";
-import { verifyJwtMiddleware } from "../src/index.ts";
+import { authenticateJWT } from "../src/authMiddleware.ts";
 
-describe("verifyJwtMiddleware", () => {
+describe("authenticateJWT", () => {
   beforeEach(() => {
     sinon.stub(jwksClient.JwksClient.prototype, "getSigningKeys").resolves([
       { getPublicKey: () => "fake-public-key" } as any,
@@ -24,7 +24,7 @@ describe("verifyJwtMiddleware", () => {
   it("should throw on missing Authorization header", async () => {
     const req = { headers: {} } as http.IncomingMessage;
 
-    await expect(verifyJwtMiddleware(req)).to.be.rejectedWith("Missing or invalid Authorization header");
+    await expect(authenticateJWT(req)).to.be.rejectedWith("Missing or invalid Authorization header");
   });
 
   it("should reject JWT without required group", async () => {
