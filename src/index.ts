@@ -1,7 +1,7 @@
 import express from 'express';
 import type { Request, Response} from 'express';
 
-import { authenticateJWT } from "./authMiddleware.ts";
+import { authenticateJWT } from "./auth.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 

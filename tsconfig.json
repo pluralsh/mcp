@@ -1,12 +1,21 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "Node",
+    // Needed for top-level await and ESM
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    // Required by ts-jest in NodeNext/Node16 module mode
+    "isolatedModules": true,
+
     "esModuleInterop": true,
-    "outDir": "dist",
-    "rootDir": "src",
     "strict": true,
-    "allowImportingTsExtensions": true
-  }
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  // Ensure Jest sees both src and test folders
+  "include": ["src", "test"]
 }
