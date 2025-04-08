@@ -4,7 +4,7 @@ This is an [Model Context Protocol (MCP)](https://modelcontextprotocol.io) serve
 
 ## Features
 
-- 🧪 **Resource handler**: Returns a text document based on the URI (`echo://message`)
-- 🛠 **Tool handler**: Responds to structured tool calls with text output
-- 💬 **Prompt handler**: Generates prompt messages for Claude to respond to
+- **Resource handler**: Returns a text document based on the URI (`echo://message`)
+- **Tool handler**: Responds to structured tool calls with text output
+- **Prompt handler**: Generates prompt messages for Claude to respond to
 
