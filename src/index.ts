@@ -1,127 +1,84 @@
-#!/usr/bin/env node
-import http from "http";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import jwksClient from "jwks-rsa";
-import jwtPkg from "jsonwebtoken";
-type JwtPayload = jwtPkg.JwtPayload;
+import dotenv from "dotenv";
+dotenv.config();
+
+import express from 'express';
+import type { Request, Response} from 'express';
+import { z } from "zod";
 
 
-const JWT_AUTH_ENABLED = process.env.JWT_AUTH_ENABLED === "true";
-const REQUIRED_GROUPS = process.env.REQUIRED_GROUPS?.split(",") ?? [];
-const JWKS_URI = process.env.JWKS_URI || "https://your-console-url/.well-known/jwks.json";
+import { authenticateJWT, initializeJWKS } from "./auth.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 
-const client = jwksClient({
-    jwksUri: JWKS_URI,
+await initializeJWKS();
+
+const server = new McpServer({
+  name: "Echo",
+  version: "1.0.0"
 });
 
-async function verifyJwtMiddleware(req: http.IncomingMessage): Promise<JwtPayload> {
-    const REQUIRED_GROUPS = process.env.REQUIRED_GROUPS?.split(",") ?? [];
-    const authHeader = req.headers["authorization"];
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        throw new Error("Missing or invalid Authorization header");
-    }
+server.resource(
+  "echo",
+  new ResourceTemplate("echo://{message}", { list: undefined }),
+  async (uri, { message }) => ({
+    contents: [{
+      uri: uri.href,
+      text: `Resource echo: ${message}`
+    }]
+  })
+);
 
-    const token = authHeader.substring(7); // remove "Bearer "
-        
-    const signingKeys = await client.getSigningKeys();
-    if (signingKeys.length === 0) {
-        throw new Error("No signing keys found in JWKS");
-    }
+server.tool(
+  "echo",
+  { message: z.string() },
+  async ({ message }) => ({
+    content: [{ type: "text", text: `Tool echo: ${message}` }]
+  })
+);
 
-    const publicKey = signingKeys[0].getPublicKey();
+server.prompt(
+  "echo",
+  { message: z.string() },
+  ({ message }) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: `Please process this message: ${message}`
+      }
+    }]
+  })
+);
 
-    return new Promise((resolve, reject) => {
-        jwtPkg.verify(token, publicKey, { algorithms: ["ES256"] }, (err, decoded) => {
-            if (err) return reject(err);
+const app = express();
 
-            if (typeof decoded !== "object" || decoded === null) {
-                return reject(new Error("Invalid JWT payload"));
-            }
+const transports: { [sessionId: string]: SSEServerTransport } = {};
 
-            if (REQUIRED_GROUPS) {
-                const groups = (decoded as any).groups;
-              
-                if (!Array.isArray(groups)) {
-                  return reject(new Error("Missing 'groups' claim"));
-                }
-              
-                if (!REQUIRED_GROUPS.some(group => groups.includes(group))) {
-                    console.log("Decoded groups:", groups);
-                    console.log("Required groups:", REQUIRED_GROUPS);
-                    return reject(new Error("User does not belong to any required group"));
-                }
-            }
-              
-            resolve(decoded as JwtPayload);
-        });
+app.get("/sse", authenticateJWT, async (_: Request, res: Response) => {
+  try {
+    const transport = new SSEServerTransport('/messages', res);
+    transports[transport.sessionId] = transport;
+    res.on("close", () => {
+      delete transports[transport.sessionId];
     });
-}
-
-async function main() {
-    console.log("Starting MCP HTTP SERVER...")
-
-    const server = new Server(
-        { name: "MCP HTTP Server", version: "1.0.0" },
-        { capabilities: { tools: {} } }
-    );
-
-    const requestHandler = async (req: http.IncomingMessage, res: http.ServerResponse) => {
-        if (req.method !== "GET") {
-            res.writeHead(405, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "Method not allowed" }));
-            return;
-        }
-    
-        if (req.headers.accept !== "text/event-stream") {
-            res.writeHead(406, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "Only SSE transport is supported" }));
-            return;
-        }
-    
-        if (JWT_AUTH_ENABLED) {
-            try {
-                const user = await verifyJwtMiddleware(req);
-                console.log("Authenticated SSE client:", user.sub);
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                res.writeHead(401, { "Content-Type": "application/json" });
-                res.end(JSON.stringify({ error: "Unauthorized", details: message }));
-                return;
-            }
-        }
-    
-        res.writeHead(200, {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-            "Access-Control-Allow-Origin": "*",
-        });
-    
-        res.write(`data: ${JSON.stringify({ message: "Connected to MCP SSE server" })}\n\n`);
-    
-        const interval = setInterval(() => {
-            res.write(`data: ${JSON.stringify({ ping: new Date().toISOString() })}\n\n`);
-        }, 15000);
-    
-        req.on("close", () => {
-            clearInterval(interval);
-            console.log("SSE connection closed");
-        });
-    };
-        
-    
-
-    const httpServer = http.createServer(requestHandler);
-    const PORT = process.env.PORT || 3000;
-
-    httpServer.listen(PORT, () => {
-        console.error(`MCP HTTP Server running on port ${PORT}`);
-    });
-}
-
-main().catch((error) => {
-    console.error("Fatal error in main():", error);
-    process.exit(1);
+    console.error("Starting MCP server.connect with session:", transport.sessionId);
+    await server.connect(transport);
+    console.error("MCP connection complete for session:", transport.sessionId);
+  } catch (err) {
+    console.error("Error during server.connect:", err);
+    res.status(500).send("Internal server error");
+  }
 });
 
-export { verifyJwtMiddleware };
+app.post("/messages", authenticateJWT, async (req: Request, res: Response) => {
+  const sessionId = req.query.sessionId as string;
+  const transport = transports[sessionId];
+  if (transport) {
+    await transport.handlePostMessage(req, res);
+  } else {
+    res.status(400).send('No transport found for sessionId');
+  }
+});
+
+console.error("Creating MCP Server on port 3000")
+app.listen(3000);
