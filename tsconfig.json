@@ -10,7 +10,7 @@
 
     "esModuleInterop": true,
     "strict": true,
-    "allowImportingTsExtensions": true,
+    "allowImportingTsExtensions": false,
     "skipLibCheck": true,
 
     "outDir": "dist",

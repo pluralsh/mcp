@@ -24,6 +24,7 @@
   "description": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
+    "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "jose": "^6.0.10",
     "jsonwebtoken": "^9.0.2",
